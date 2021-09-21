@@ -135,7 +135,7 @@ void modified ( int run = 366, int event = -1 ){
   string date = getDate();
 
   // Take user inputs
-  cout << " Run number? No. of events? Want Summary plots?(0/1) " << endl;
+  cout << " Run number? No. of events replayed?(-1 => All) Want Summary plots?(0/1) " << endl;
   cin >> run >> event >> diagPlots;
   
   // Define a clock to check macro processing time
@@ -254,11 +254,15 @@ void modified ( int run = 366, int event = -1 ){
 	double binWidth = hADCint[r][c]->GetBinWidth(maxBin);
 	double stdDev = hADCint[r][c]->GetStdDev();
 
+	// Reject low energy peak
 	if( hADCint[r][c]->GetBinContent(maxBin - 2) == 0 ){
 	  while ( hADCint[r][c]->GetBinContent(maxBin + 1) < hADCint[r][c]->GetBinContent(maxBin) ) { maxBin++; };
-	//   hADCint[r][c]->GetXaxis()->SetRange( maxBin+2 , hADCint[r][c]->GetNbinsX() );
+	  hADCint[r][c]->GetXaxis()->SetRange( maxBin+2 , hADCint[r][c]->GetNbinsX() );
 	  maxBin = hADCint[r][c]->GetMaximumBin();
+	  maxBinCenter = hADCint[r][c]->GetXaxis()->GetBinCenter( maxBin );
 	  maxCount = hADCint[r][c]->GetMaximum();
+	  binWidth = hADCint[r][c]->GetBinWidth(maxBin);
+	  stdDev = hADCint[r][c]->GetStdDev();
 	}
 
 	fgaus->SetParameters( maxCount,maxBinCenter,stdDev );
