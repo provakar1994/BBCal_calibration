@@ -125,7 +125,7 @@ namespace shgui {
 };
 
 // Main
-void modified ( int run = 366, int event = -1 ){
+void bbcal_cos_cal ( int run = 366, int event = -1 ){
 
   shgui::SetupGUI();
   gStyle->SetLabelSize(0.08,"XY");
