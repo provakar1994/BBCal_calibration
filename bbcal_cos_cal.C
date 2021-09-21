@@ -143,6 +143,8 @@ void bbcal_cos_cal ( int run = 366, int event = -1 ){
   st->Start(kTRUE);
 
   // Out files
+  string OutFile = Form("Output/run_%d_peak.txt",run); //Mark
+  ofstream outfile_data; //Mark
   ofstream fitData, pedRMS;
   fitData.open(Form("fit_results/bbshower_%d_FitResults.txt",run));
   fitData << "*Run Number: " << run << " Desired Peak Position: " << TargetADC << endl;
@@ -275,8 +277,8 @@ void bbcal_cos_cal ( int run = 366, int event = -1 ){
 
   
 	// Second fit with tailored range
-	int lowerBinC = hADCint_min + (maxBin)*binWidth - (2.7*Pars[2]);
-	int upperBinC = hADCint_min + (maxBin)*binWidth + (2.7*Pars[2]);
+	int lowerBinC = hADCint_min + (maxBin)*binWidth - (2.5*Pars[2]);
+	int upperBinC = hADCint_min + (maxBin)*binWidth + (2.5*Pars[2]);
 	// if(r==0 || r==(kNrows-1)){ // To make the fits better for top and bottom rows
 	//   lowerBinC = hADCint_min + (maxBin)*binWidth - (2.5*Pars[2]);
 	//   upperBinC = hADCint_min + (maxBin)*binWidth + (2.5*Pars[2]);
@@ -334,6 +336,8 @@ void bbcal_cos_cal ( int run = 366, int event = -1 ){
 	fitData.width(12); fitData << NinPeakSH;
 	fitData.width(12); fitData << Flag << endl;
 
+	outfile_data << Pars[1] << " "   << ParErrs[1] << " " ; 
+
 	if ( Flag != "Good" ){
 	  for( int i=0; i<4; i++ ) { Pars[i] = 0.; ParErrs[i] = 0.; }
 	  NinPeakSH = 0.;
@@ -355,9 +359,21 @@ void bbcal_cos_cal ( int run = 366, int event = -1 ){
 	RMSErr[kNcols*r+c] = ParErrs[2];
 	NinPeak[kNcols*r+c] = NinPeakSH;
 	HVCrrFact[kNcols*r+c] = HVcorrection;
+
+	// string OutFile = Form("Output/run_%d_peak.txt",nrun);
+	// ofstream outfile_data;
+	// outfile_data.open(OutFile);
+	// for (Int_t nr=0;nr<shNRow;nr++) {
+	//   for (Int_t nc=0;nc<shNCol;nc++) {
+	//     outfile_data << peakmean[nr][nc] << " "   << peakmean_err[nr][nc]<< " " ; 
+	//   }    
+	//   outfile_data << endl;
+	// }
+	
 	
       }
     }
+    outfile_data << endl;
   }
 
   // subCanv[0]->SaveAs(Form("plots/SH_cospeak_%d.pdf[",run));
@@ -374,6 +390,7 @@ void bbcal_cos_cal ( int run = 366, int event = -1 ){
 
   // Close all the outFiles
   fitData.close();
+  outfile_data.close();
   
   // Post analysis reporting
   cout << "Finished loop over run " << run << "." << endl;
