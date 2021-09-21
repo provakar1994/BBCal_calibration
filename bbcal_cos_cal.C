@@ -1,5 +1,5 @@
 // This macro performs the waveform analysis for BBShower cosmic data.
-// To execute do: .x BBSH_cosCal_samps.C
+// To execute do: .x bbcal_cos_cal.C
 // NOTE: Before execution make sure that three directories named plots, fit_results & outFiles exist.
 // - P. Datta
 
