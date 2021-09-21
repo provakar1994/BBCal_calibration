@@ -255,9 +255,12 @@ void bbcal_cos_cal ( int run = 366, int event = -1 ){
 	double stdDev = hADCint[r][c]->GetStdDev();
 
 	// Reject low energy peak
-	if( hADCint[r][c]->GetBinContent(maxBin - 2) == 0 ){
-	  while ( hADCint[r][c]->GetBinContent(maxBin + 1) < hADCint[r][c]->GetBinContent(maxBin) ) { maxBin++; };
-	  hADCint[r][c]->GetXaxis()->SetRange( maxBin+2 , hADCint[r][c]->GetNbinsX() );
+	if( hADCint[r][c]->GetBinContent(maxBin-2) < 0.02*hADCint[r][c]->GetBinContent(maxBin) ){
+	  while ( hADCint[r][c]->GetBinContent(maxBin+1) < hADCint[r][c]->GetBinContent(maxBin) || hADCint[r][c]->GetBinContent(maxBin+1) == hADCint[r][c]->GetBinContent(maxBin) ) 
+	    {
+		maxBin++;
+	    };
+	  hADCint[r][c]->GetXaxis()->SetRange( maxBin+1 , hADCint[r][c]->GetNbinsX() );
 	  maxBin = hADCint[r][c]->GetMaximumBin();
 	  maxBinCenter = hADCint[r][c]->GetXaxis()->GetBinCenter( maxBin );
 	  maxCount = hADCint[r][c]->GetMaximum();
@@ -272,8 +275,8 @@ void bbcal_cos_cal ( int run = 366, int event = -1 ){
 
   
 	// Second fit with tailored range
-	int lowerBinC = hADCint_min + (maxBin)*binWidth - (2.5*Pars[2]);
-	int upperBinC = hADCint_min + (maxBin)*binWidth + (2.5*Pars[2]);
+	int lowerBinC = hADCint_min + (maxBin)*binWidth - (2.7*Pars[2]);
+	int upperBinC = hADCint_min + (maxBin)*binWidth + (2.7*Pars[2]);
 	// if(r==0 || r==(kNrows-1)){ // To make the fits better for top and bottom rows
 	//   lowerBinC = hADCint_min + (maxBin)*binWidth - (2.5*Pars[2]);
 	//   upperBinC = hADCint_min + (maxBin)*binWidth + (2.5*Pars[2]);
