@@ -143,9 +143,10 @@ void bbcal_cos_cal ( int run = 366, int event = -1 ){
   st->Start(kTRUE);
 
   // Out files
-  string OutFile = Form("Output/run_%d_peak.txt",run); //Mark
+  string OutFile = Form("fit_results/run_%d_peak.txt",run);
   ofstream outfile_data; //Mark
   ofstream fitData, pedRMS;
+  outfile_data.open(OutFile);
   fitData.open(Form("fit_results/bbshower_%d_FitResults.txt",run));
   fitData << "*Run Number: " << run << " Desired Peak Position: " << TargetADC << endl;
   fitData << "*Block " << " " << " HV Corr " << " " << " Stat " << " " << " ErrStat " << " " << " Peak Pos " << " " << " ErrPPos " << " " << " Peak Width " << " " << " ErrPWid " << " " << " NinPeak " << " " <<  " " << " Flag " << endl;
