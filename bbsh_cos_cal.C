@@ -28,6 +28,7 @@ TCanvas *subCanv[4];
 
 // Declare necessary histograms
 TH1F *hADCint[kNrows][kNcols];
+TH1F *hamptointratio[kNrows][kNcols];
 
 // Declare necessary arrayes 
 bool gPulse[kNrows+2][kNcols+2];
@@ -151,9 +152,9 @@ void bbsh_cos_cal ( int run = 366, int event = -1 ){
   fitData << "*Run Number: " << run << " Desired Peak Position: " << TargetADC << endl;
   fitData << "*Block " << " " << " HV Corr " << " " << " Stat " << " " << " ErrStat " << " " << " Peak Pos " << " " << " ErrPPos " << " " << " Peak Width " << " " << " ErrPWid " << " " << " NinPeak " << " " <<  " " << " Flag " << endl;
 
-  int hADCint_bin = 50;
-  double hADCint_min = -5.;
-  double hADCint_max = 45.;
+  int hADCint_bin = 50, hamptointratio_bin = 16;
+  double hADCint_min = -5., hamptointratio_min = 1.;
+  double hADCint_max = 45., hamptointratio_max = 3.;
 
   // Read in data produced by analyzer in root format
   cout << "Reading trees from replayed file.." << endl;
@@ -166,6 +167,7 @@ void bbsh_cos_cal ( int run = 366, int event = -1 ){
     T->SetBranchStatus("*",0);
     T->SetBranchStatus("bb.sh.*",1);
     T->SetBranchAddress("bb.sh.a_p",fadc_datat::a);
+    T->SetBranchAddress("bb.sh.a_amp_p",fadc_datat::amp);
     T->SetBranchAddress("bb.sh.a_time",fadc_datat::tdc);
     T->SetBranchAddress("bb.sh.adcrow",fadc_datat::row);
     T->SetBranchAddress("bb.sh.adccol",fadc_datat::col);
@@ -178,6 +180,7 @@ void bbsh_cos_cal ( int run = 366, int event = -1 ){
     for(int r = 0; r < kNrows; r++) {
       for(int c = 0; c < kNcols; c++) {
 	hADCint[r][c] = MakeHisto(r, c, hADCint_bin, "_i", hADCint_min, hADCint_max);
+	hamptointratio[r][c] = MakeHisto(r, c, hamptointratio_bin, "_r", hamptointratio_min, hamptointratio_max);
       }
     }
   }
@@ -298,10 +301,16 @@ void bbsh_cos_cal ( int run = 366, int event = -1 ){
 	HVcorrection = pow( (TargetADC/Pars[1]), 0.10); // Correction term for HV
 	NinPeakSH = hADCint[r][c]->Integral( hADCint[r][c]->FindFixBin(lowerBinC),hADCint[r][c]->FindFixBin(upperBinC),"" ); // # of good events
 	  
-	hADCint[r][c]->SetTitle(TString::Format("SH %d.%d | ADC Integral ",r+1,c+1));
-	hADCint[r][c]->GetYaxis()->SetLabelSize(0.06);
-	hADCint[r][c]->SetLineColor(kBlue+1);
-	hADCint[r][c]->Draw();
+	// hADCint[r][c]->SetTitle(TString::Format("SH %d.%d | ADC Integral ",r+1,c+1));
+	// hADCint[r][c]->GetYaxis()->SetLabelSize(0.06);
+	// hADCint[r][c]->SetLineColor(kBlue+1);
+	// hADCint[r][c]->Draw();
+	// gPad->Update();
+
+	hamptointratio[r][c]->SetTitle(TString::Format("SH %d.%d | Amp/Int  ",r+1,c+1));
+	hamptointratio[r][c]->GetYaxis()->SetLabelSize(0.06);
+	hamptointratio[r][c]->SetLineColor(kBlue+1);
+	hamptointratio[r][c]->Draw();
 	gPad->Update();
 
 	// Let's determine how good is the fit
@@ -377,9 +386,9 @@ void bbsh_cos_cal ( int run = 366, int event = -1 ){
     outfile_data << endl;
   }
 
-  // subCanv[0]->SaveAs(Form("plots/SH_cospeak_%d.pdf[",run));
-  // for( int canC=0; canC<4; canC++ ) subCanv[canC]->SaveAs(Form("plots/SH_cospeak_%d.pdf",run));
-  // subCanv[3]->SaveAs(Form("plots/SH_cospeak_%d.pdf]",run));
+  subCanv[0]->SaveAs(Form("plots/SH_cospeak_%d.pdf[",run));
+  for( int canC=0; canC<4; canC++ ) subCanv[canC]->SaveAs(Form("plots/SH_cospeak_%d.pdf",run));
+  subCanv[3]->SaveAs(Form("plots/SH_cospeak_%d.pdf]",run));
 
   cout << "The fit parameters have been written to bbshower_" << run << "_FitResults.txt" << "." << endl;
 
@@ -460,10 +469,12 @@ void processEvent( int entry = -1 ){
   
   // Reset signal peak, adc, and tdc arrays
   double adc[kNrows][kNcols];
+  double adc_amp[kNrows][kNcols];
   double tdc[kNrows][kNcols];
   for(r  = 0; r < kNrows; r++) {
     for(c  = 0; c < kNcols; c++) {
       adc[r][c] = 0.0;
+      adc_amp[r][c] = 0.0;
       tdc[r][c] = 0.0;
     }
   }
@@ -482,6 +493,7 @@ void processEvent( int entry = -1 ){
     
     // Define index, number of samples, fill adc and tdc arrays, and switch processed marker for error reporting
     adc[r][c] = fadc_datat::a[m];
+    adc_amp[r][c] = fadc_datat::amp[m];
     tdc[r][c] = fadc_datat::tdc[m];
     goodHistoTest( tdc[r][c],r,c ); // Setting flag for good events
   }
@@ -495,15 +507,18 @@ void processEvent( int entry = -1 ){
       hADCint[r][c]->SetTitle(Form("%d-%d ",r,c));
       if(r==0){
       	if((gPulse[r+2][c+1]&&gPulse[r+3][c+1]&&gPulse[r+4][c+1]) && (!gPulse[r+1][c]&&!gPulse[r+1][c+2])){
-      	  hADCint[r][c]->Fill( adc[r][c] ); 
+      	  hADCint[r][c]->Fill( adc[r][c] );
+	  hamptointratio[r][c]->Fill( adc_amp[r][c]/adc[r][c] ); 
       	}
       }else if(r==(kNrows-1)){
       	if((gPulse[r][c+1]&&gPulse[r-1][c+1]&&gPulse[r-2][c+1]) && (!gPulse[r+1][c]&&!gPulse[r+1][c+2])){
-      	  hADCint[r][c]->Fill( adc[r][c] );  
+      	  hADCint[r][c]->Fill( adc[r][c] );
+	  hamptointratio[r][c]->Fill( adc_amp[r][c]/adc[r][c] );  
       	}
       }else{	
       	if( (gPulse[r][c+1]&&gPulse[r+2][c+1]) && (!gPulse[r+1][c]&&!gPulse[r+1][c+2]) ){
       	  hADCint[r][c]->Fill( adc[r][c] );  
+	  hamptointratio[r][c]->Fill( adc_amp[r][c]/adc[r][c] );
       	}
       }
       // hADCint[r][c]->Fill( adc[r][c] );
