@@ -146,8 +146,9 @@ void bbsh_cos_cal ( int run = 366, int event = -1 ){
   // Out files
   string OutFile = Form("fit_results/run_%d_peak.txt",run);
   ofstream outfile_data; //Mark
-  ofstream fitData, pedRMS;
+  ofstream fitData, pedRMS, abc;
   outfile_data.open(OutFile);
+  abc.open(Form("bbshower_%d_amptointRatio_SH.txt",run));
   fitData.open(Form("fit_results/bbshower_%d_FitResults.txt",run));
   fitData << "*Run Number: " << run << " Desired Peak Position: " << TargetADC << endl;
   fitData << "*Block " << " " << " HV Corr " << " " << " Stat " << " " << " ErrStat " << " " << " Peak Pos " << " " << " ErrPPos " << " " << " Peak Width " << " " << " ErrPWid " << " " << " NinPeak " << " " <<  " " << " Flag " << endl;
@@ -234,6 +235,7 @@ void bbsh_cos_cal ( int run = 366, int event = -1 ){
   // Let's fit the histograms with Gauss (twice)
   //TF1 *fgaus[kNrows][kNcols] = {};
   TF1 *fgaus = new TF1("fgaus","gaus");
+  TF1 *fgaus2 = new TF1("fgaus2","gaus");
 
   //c1->cd();
   //subCanv[0]->cd((0)*kNcols + 0 + 1);
@@ -293,7 +295,7 @@ void bbsh_cos_cal ( int run = 366, int event = -1 ){
 	sub = r/7;
 	subCanv[sub]->cd((r%7)*kNcols + c + 1);
 	
-	hADCint[r][c]->Fit( fgaus,"+RQ" );
+	hADCint[r][c]->Fit( fgaus,"NO+RQ" );
 	fgaus->GetParameters(Pars);
 	for ( int i=0; i<3; i++ ) ParErrs[i] = fgaus->GetParError(i); 
 
@@ -307,8 +309,18 @@ void bbsh_cos_cal ( int run = 366, int event = -1 ){
 	// hADCint[r][c]->Draw();
 	// gPad->Update();
 
+	fgaus2->SetLineColor(2);
+	fgaus2->SetNpx(1000);
+	fgaus2->SetParameters( maxCount,maxBinCenter,stdDev );
+	fgaus2->SetRange( hamptointratio_min, hamptointratio_max );
+	hamptointratio[r][c]->Fit(fgaus2,"+RQ");
+
+	abc << r*kNcols+c << "\t" << fgaus2->GetParameter(1) << endl;
+
 	hamptointratio[r][c]->SetTitle(TString::Format("SH %d.%d | Amp/Int  ",r+1,c+1));
-	hamptointratio[r][c]->GetYaxis()->SetLabelSize(0.06);
+	// hamptointratio[r][c]->GetYaxis()->SetLabelSize(0.06);
+        hamptointratio[r][c]->GetXaxis()->SetLabelSize(0.04);
+	hamptointratio[r][c]->GetYaxis()->SetLabelSize(0.04);
 	hamptointratio[r][c]->SetLineColor(kBlue+1);
 	hamptointratio[r][c]->Draw();
 	gPad->Update();
@@ -401,6 +413,7 @@ void bbsh_cos_cal ( int run = 366, int event = -1 ){
   // Close all the outFiles
   fitData.close();
   outfile_data.close();
+  abc.close();
   
   // Post analysis reporting
   cout << "Finished loop over run " << run << "." << endl;
