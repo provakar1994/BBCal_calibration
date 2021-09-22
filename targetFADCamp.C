@@ -33,23 +33,31 @@ static const Double_t target_FADC_amp=10.; //mV
 void targetFADCamp(){
 
   vector<double> trigtoFADC;
-  vector<int> elemID;
+  vector<double> elemID;
   
   string InFile = "trigtoFADCcoef_PS.txt";
   ifstream infile_data;
   infile_data.open(InFile);
-  string readline;
+  TString currentline;
   if (infile_data.is_open() ) {
-    while (getline(infile_data,readline)) {
-      double ratio;
-      int elem;
-      infile_data >> elem >> ratio;
-      elemID.push_back( elem );
-      trigtoFADC.push_back( ratio );
+    cout << " Reading trig to FADC ratios from " << InFile << endl;
+    TString temp;
+    while( currentline.ReadLine( infile_data ) ){
+      TObjArray *tokens = currentline.Tokenize("\t");
+      int ntokens = tokens->GetEntries();
+      if( ntokens > 1 ){
+	temp = ( (TObjString*) (*tokens)[0] )->GetString();
+	elemID.push_back( temp.Atof() );
+	temp = ( (TObjString*) (*tokens)[1] )->GetString();
+	trigtoFADC.push_back( temp.Atof() );
+     }
     }
+    infile_data.close();
+  } else {
+    cout << " No file : " << InFile << endl;
   }
   
-  TH2F* target_amp = new TH2F("target_amp"," Target FADC Amplitude ; Ncol ; Nrow",kNcols,1,kNcols+1,kNrows,1,kNrows+1);
+  TH2F* target_amp = new TH2F("target_amp"," Target FADC Amplitude: PS ; Ncol ; Nrow",kNcols,1,kNcols+1,kNrows,1,kNrows+1);
 
   string OutFile = "Output/target_FADC_amp_PS.txt";
   cout << " Write target FADC amplitudes to : " << OutFile << endl;
@@ -64,6 +72,8 @@ void targetFADCamp(){
   }
   outfile_data.close();
 
+  // cout  << elemID.at(2) << endl;
+
   gStyle->SetOptStat(0);
   gStyle->SetPalette(1,0);
   gStyle->SetPaintTextFormat("4.2f");  
@@ -77,8 +87,8 @@ void targetFADCamp(){
   TCanvas* can2d;
   can2d= new TCanvas("can_2d","2d ",700,1000);
   can2d->cd();
-  target_amp->SetMaximum(16);
-  target_amp->SetMinimum(8);
+  target_amp->SetMaximum(16); //18
+  target_amp->SetMinimum(8); //6
   target_amp->Draw("text colz");
 
   can2d->SaveAs("Output/targetFADCamp_PS.pdf");
