@@ -1,5 +1,5 @@
 // This macro performs the waveform analysis for BBShower cosmic data.
-// To execute do: .x bbcal_cos_cal.C
+// To execute do: .x bbps_cos_cal.C
 // NOTE: Before execution make sure that three directories named plots, fit_results & outFiles exist.
 // - P. Datta
 
@@ -17,8 +17,8 @@
 #include "fadc_data.h"
 
 // Detector parameters
-const int kNrows = 27;
-const int kNcols = 7;
+const int kNrows = 26;
+const int kNcols = 2;
 
 const double TargetADC = 5.; //pC
 
@@ -51,7 +51,7 @@ double RMS[kNrows*kNcols], RMSErr[kNrows*kNcols], NinPeak[kNrows*kNcols], HVCrrF
 // vector<double> NinPeak, HVCrrFact;
 
 const Int_t kCanvSize = 100;
-namespace shgui {
+namespace psgui {
   TGMainFrame *main = 0;
   TGHorizontalFrame *frame1 = 0;
   TGTab *fTab;
@@ -153,16 +153,16 @@ void bbps_cos_cal ( int run = 366, int event = -1 ){
   fitData << "*Run Number: " << run << " Desired Peak Position: " << TargetADC << endl;
   fitData << "*Block " << " " << " HV Corr " << " " << " Stat " << " " << " ErrStat " << " " << " Peak Pos " << " " << " ErrPPos " << " " << " Peak Width " << " " << " ErrPWid " << " " << " NinPeak " << " " <<  " " << " Flag " << endl;
 
-  int hADCint_bin = 50, hamptointratio_bin = 16;
-  double hADCint_min = -5., hamptointratio_min = 1.;
-  double hADCint_max = 45., hamptointratio_max = 3.;
+  int hADCint_bin = 50, hamptointratio_bin = 18;
+  double hADCint_min = -5., hamptointratio_min = 2.;
+  double hADCint_max = 45., hamptointratio_max = 5.;
 
   // Read in data produced by analyzer in root format
   cout << "Reading trees from replayed file.." << endl;
   if(!T) { 
     T = new TChain("T");
     TString dataDIR = gSystem->Getenv("OUT_DIR");
-    TString filename = dataDIR + "/bbpreshower_"+run+"_"+event+".root";
+    TString filename = dataDIR + "/bbshower_"+run+"_"+event+".root";
     event = -1;
     T->Add(filename);
     T->SetBranchStatus("*",0);
@@ -303,7 +303,7 @@ void bbps_cos_cal ( int run = 366, int event = -1 ){
 	HVcorrection = pow( (TargetADC/Pars[1]), 0.10); // Correction term for HV
 	NinPeakPS = hADCint[r][c]->Integral( hADCint[r][c]->FindFixBin(lowerBinC),hADCint[r][c]->FindFixBin(upperBinC),"" ); // # of good events
 	  
-	if(r%2==0){
+	if(c%2==0){
 	  hADCint[r][c]->SetTitle(TString::Format("PS-R%d | Amp/Int  ",r+1));
 	}else{
 	  hADCint[r][c]->SetTitle(TString::Format("PS-L%d | Amp/Int  ",r+1));
@@ -313,20 +313,22 @@ void bbps_cos_cal ( int run = 366, int event = -1 ){
 	hADCint[r][c]->Draw();
 	gPad->Update();
 
-	fgaus2->SetLineColor(2);
-	fgaus2->SetNpx(1000);
-	fgaus2->SetParameters( maxCount,maxBinCenter,stdDev );
-	fgaus2->SetRange( hamptointratio_min, hamptointratio_max );
-	hamptointratio[r][c]->Fit(fgaus2,"NO+RQ");
+	// fgaus2->SetLineColor(2);
+	// fgaus2->SetNpx(1000);
+	// fgaus2->SetParameters( maxCount,maxBinCenter,stdDev );
+	// fgaus2->SetRange( hamptointratio_min, hamptointratio_max );
+	// hamptointratio[r][c]->Fit(fgaus2,"+RQ");
 
-	abc << r*kNcols+c << "\t" << fgaus2->GetParameter(1) << endl;
+	// abc << r*kNcols+c << "\t" << fgaus2->GetParameter(1) << endl;
 
-	// if(r%2==0){
+	// if(c%2==0){
 	//   hamptointratio[r][c]->SetTitle(TString::Format("PS-R%d | Amp/Int  ",r+1));
 	// }else{
 	//   hamptointratio[r][c]->SetTitle(TString::Format("PS-L%d | Amp/Int  ",r+1));
 	// }
-	// hamptointratio[r][c]->GetYaxis()->SetLabelSize(0.06);
+	// //hamptointratio[r][c]->GetYaxis()->SetLabelSize(0.06);
+        // hamptointratio[r][c]->GetXaxis()->SetLabelSize(0.04);
+	// hamptointratio[r][c]->GetYaxis()->SetLabelSize(0.04);
 	// hamptointratio[r][c]->SetLineColor(kBlue+1);
 	// hamptointratio[r][c]->Draw();
 	// gPad->Update();
@@ -387,17 +389,6 @@ void bbps_cos_cal ( int run = 366, int event = -1 ){
 	RMSErr[kNcols*r+c] = ParErrs[2];
 	NinPeak[kNcols*r+c] = NinPeakPS;
 	HVCrrFact[kNcols*r+c] = HVcorrection;
-
-	// string OutFile = Form("Output/run_%d_peak.txt",nrun);
-	// ofstream outfile_data;
-	// outfile_data.open(OutFile);
-	// for (Int_t nr=0;nr<shNRow;nr++) {
-	//   for (Int_t nc=0;nc<shNCol;nc++) {
-	//     outfile_data << peakmean[nr][nc] << " "   << peakmean_err[nr][nc]<< " " ; 
-	//   }    
-	//   outfile_data << endl;
-	// }
-	
 	
       }
     }
@@ -607,13 +598,13 @@ void makeSummaryPlots( int run, string date ){
     	Gr[i]->SetTitle(Form("Run# %d | Peak Position vs. Block No. for PS Blocks | %s",run,date.c_str()) );
     	Gr[i]->GetXaxis()->SetTitle("Block Number");
     	Gr[i]->GetYaxis()->SetTitle("Peak Position (RAU)");
-    	Gr[i]->GetYaxis()->SetRangeUser(0.,10.);
+    	Gr[i]->GetYaxis()->SetRangeUser(0.,20.);
       } else if (i == 1){
     	Gr[i]->SetTitle( Form("Run# %d | Peak RMS vs. Block No. for PS Blocks | %s",run,date.c_str()) ); 
     	Gr[i]->GetXaxis()->SetTitle("Block Number");
     	Gr[i]->GetYaxis()->SetTitle("Peak RMS (RAU)");
     	Gr[i]->GetYaxis()->SetTitleOffset(1.4);
-    	Gr[i]->GetYaxis()->SetRangeUser(0.,2.);
+    	Gr[i]->GetYaxis()->SetRangeUser(0.,5.);
       }else if (i == 2){
     	Gr[i]->SetTitle( Form("Run# %d | N of Events in Peak(fitted region) vs Block No. for PS | %s",run,date.c_str()) );
     	Gr[i]->GetXaxis()->SetTitle("Block Number");
