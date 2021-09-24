@@ -17,6 +17,7 @@
 #include <TMath.h>
 #include <TProfile.h>
 #include <TObjArray.h>
+#include <TObjString.h>
 #include <iostream>
 #include <sstream>
 #include <fstream>
@@ -243,7 +244,7 @@ void FitRuns(Double_t Set_Peak=200.) {
   alpha_blocknumber->Draw();
 
   string OutFile = Form("Output/run_%d_%d_alpha.txt",RunList[0],RunList[RunList.size()-1]);
-  cout << " Write alphas to : " << OutFile;
+  cout << " Write alphas to : " << OutFile << endl;
   ofstream outfile_data;
   outfile_data.open(OutFile);
   for (Int_t nr=0;nr<shNRow;nr++) {
