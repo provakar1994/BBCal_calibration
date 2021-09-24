@@ -46,7 +46,7 @@ void WriteHV();
 void AddRun(Int_t nrun);
 void FitRuns(Double_t Set_Peak);
 Double_t fitfunct(Double_t *x,Double_t *par);
-void ReadDesiredFADCamps();
+void GenDesiredFADCamps(Double_t desTrigamp);
 
 vector <Int_t> RunList;
 vector<double> DesiredFADCamps;
@@ -96,7 +96,10 @@ void WriteHV() {
 void FitRuns(Double_t Set_Peak=200.) {
   bool trigtoFADC_ratio = false;
   if ( Set_Peak==-1 ){
-    ReadDesiredFADCamps();
+    Double_t desTrigamp = 0.;
+    cout << " Enter desired trigger amplitude (mV) " << endl;
+    cin >> desTrigamp;
+    GenDesiredFADCamps(desTrigamp);
     trigtoFADC_ratio = true;
   }else if (Set_Peak >0 && Set_Peak < 500) Peak_Desired=Set_Peak;
   
@@ -467,22 +470,24 @@ void UpdateHV(Int_t nrun, Double_t HVShift) {
   outfile_hv.close();     
 }
 
-void ReadDesiredFADCamps(){
-  string InFile = "TrigtoFADC/bbsh_desFADCamp_for_desTrigamp_10mV.txt";
+void GenDesiredFADCamps(Double_t desTrigamp){
+  string InFile = "TrigtoFADC/trigtoFADCcoef_SH.txt";
   ifstream infile_data;
   infile_data.open(InFile);
   TString currentline;
   if (infile_data.is_open() ) {
-    cout << " Reading calculated FADC amp for desired Trig amp of 10 mV " << InFile << endl;
+    cout << " Reading trigger to FADC ratios from " << InFile << endl;
+    cout << " Generating desired FADC amps to align trigger amps to " << desTrigamp << " mV. " << endl;
     TString temp;
     while( currentline.ReadLine( infile_data ) ){
-      TObjArray *tokens = currentline.Tokenize(" ");
+      TObjArray *tokens = currentline.Tokenize("\t");
       int ntokens = tokens->GetEntries();
       if( ntokens > 1 ){
 	// temp = ( (TObjString*) (*tokens)[0] )->GetString();
 	// elemID.push_back( temp.Atof() );
 	temp = ( (TObjString*) (*tokens)[1] )->GetString();
-	DesiredFADCamps.push_back( temp.Atof() );
+	Double_t target_FADC_amp_pCh = desTrigamp/temp.Atof();
+	DesiredFADCamps.push_back( target_FADC_amp_pCh );
       }
       delete tokens;
     }
