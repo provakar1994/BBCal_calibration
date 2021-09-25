@@ -17,8 +17,10 @@
 #include <TMath.h>
 #include <TProfile.h>
 #include <TObjArray.h>
+#include <TObjString.h>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -47,6 +49,7 @@ Double_t fitfunct(Double_t *x,Double_t *par);
 void GenDesiredFADCamps(Double_t desTrigamp);
 
 vector <Int_t> RunList;
+vector<double> DesiredFADCamps;
 vector<vector<double> > HVList;
 vector<vector<double> > PeakList;
 vector<vector<double> > PeakErrList;
@@ -161,7 +164,7 @@ void FitRuns(Double_t Set_Peak=200.) {
 	   if(!trigtoFADC_ratio){
 	     HVUpdate[nelem]=-TMath::Exp((TMath::Log(Peak_Desired) - fit_const[nelem])/fit_alpha[nelem]);
 	   }else{
-	     Double_t temp = DesiredFADCamps.at(nr*shNCol+nc);
+	     Double_t temp = DesiredFADCamps.at(nr*psNCol+nc);
 	     HVUpdate[nelem]=-TMath::Exp((TMath::Log(temp) - fit_const[nelem])/fit_alpha[nelem]);
 	   }
 	   if (fit_alpha[nelem]<1) {
@@ -169,7 +172,7 @@ void FitRuns(Double_t Set_Peak=200.) {
 	       Double_t HV_temp=vecHV[0]*TMath::Power(Peak_Desired/vecPeak[0],1./6.);
 	       HVUpdate[nelem]=-HV_temp;
 	     }else{
-	       Double_t temp = DesiredFADCamps.at(nr*shNCol+nc);
+	       Double_t temp = DesiredFADCamps.at(nr*psNCol+nc);
 	       Double_t HV_temp=vecHV[0]*TMath::Power(temp/vecPeak[0],1./6.);
 	       HVUpdate[nelem]=-HV_temp;
 	     }
@@ -323,7 +326,7 @@ void CompHistRuns() {
 void ReadHist(Int_t nrun) {
   TString inputroot;
   TFile *fhistroot;
-  inputroot=Form("hist/bbcal_%d_preshower_hist.root",nrun);
+  inputroot=Form("hist/bbshower_%d_preshower_hist.root",nrun);
   cout << " Read hist file " << inputroot << endl;
   fhistroot =  new TFile(inputroot);
   vector<TH1F*> h_shADC_pedsub_cut;
@@ -510,6 +513,7 @@ void UpdateHV(Int_t nrun, Double_t HVShift) {
 	if (HV_Block[nc][ns][nch] == -1 ) {
 	  outfile_hv << " " <<  HV_Value[nc][ns][nch] ;
 	} else {
+	  cout << " *** here ** " << endl;
 	  outfile_hv << " " <<  HV_Value[nc][ns][nch]-HVShift ;
 	}
       }

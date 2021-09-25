@@ -38,13 +38,15 @@ double ParErrs[3];
 // Declare necessary functions
 string getDate();
 TH1F* MakeHisto( Int_t, Int_t, Int_t, const char*, Double_t, Double_t );
-void processEvent( int );
+void processEvent( int, bool );
 void goodHistoTest( double, int, int );
-void makeSummaryPlots( int, string );
+void makeSummaryPlots( int, string, bool );
+void GetTrigtoFADCratio();
 
 // Declare vectors necessary to make diagnostic plots
 double blocks[kNrows*kNcols], peakPos[kNrows*kNcols], peakPosErr[kNrows*kNcols];
 double RMS[kNrows*kNcols], RMSErr[kNrows*kNcols], NinPeak[kNrows*kNcols], HVCrrFact[kNrows*kNcols];
+vector<double> trigTofadcRatio;
 // vector<double> blocks;
 // vector<double> peakPos, peakPosErr;
 // vector<double> RMS, RMSErr;
@@ -133,11 +135,14 @@ void bbsh_cos_cal ( int run = 366, int event = -1 ){
   gStyle->SetTitleFontSize(0.08);
 
   bool diagPlots = 0;
+  bool trigAmp = 0;
   string date = getDate();
 
   // Take user inputs
-  cout << " Run number? No. of events replayed?(-1 => All) Want Summary plots?(0/1) " << endl;
-  cin >> run >> event >> diagPlots;
+  cout << " Run number? No. of events replayed?(-1 => All) Want Summary plots?(0/1) Want trigger amp?(0/1)" << endl;
+  cin >> run >> event >> diagPlots >> trigAmp;
+
+  // if(trigAmp) GetTrigtoFADCratio();
   
   // Define a clock to check macro processing time
   TStopwatch *st = new TStopwatch();
@@ -153,9 +158,9 @@ void bbsh_cos_cal ( int run = 366, int event = -1 ){
   fitData << "*Run Number: " << run << " Desired Peak Position: " << TargetADC << endl;
   fitData << "*Block " << " " << " HV Corr " << " " << " Stat " << " " << " ErrStat " << " " << " Peak Pos " << " " << " ErrPPos " << " " << " Peak Width " << " " << " ErrPWid " << " " << " NinPeak " << " " <<  " " << " Flag " << endl;
 
-  int hADCint_bin = 50, hamptointratio_bin = 16;
-  double hADCint_min = -5., hamptointratio_min = 1.;
-  double hADCint_max = 45., hamptointratio_max = 3.;
+  int hADCint_bin = 80, hamptointratio_bin = 16;
+  double hADCint_min = 0., hamptointratio_min = 1.;
+  double hADCint_max = 80., hamptointratio_max = 3.;
 
   // Read in data produced by analyzer in root format
   cout << "Reading trees from replayed file.." << endl;
@@ -214,7 +219,7 @@ void bbsh_cos_cal ( int run = 366, int event = -1 ){
   // Populate fADC and f1TDC spectra histograms
   cout << "Processing signals.." << endl;
   for (int i = gCurrentEntry; i < T->GetEntries(); i++){ 
-    processEvent( gCurrentEntry );
+    processEvent( gCurrentEntry, trigAmp );
     gCurrentEntry++;
     
     // Keep count of events processed for monitoring
@@ -295,7 +300,7 @@ void bbsh_cos_cal ( int run = 366, int event = -1 ){
 	sub = r/7;
 	subCanv[sub]->cd((r%7)*kNcols + c + 1);
 	
-	hADCint[r][c]->Fit( fgaus,"NO+RQ" );
+	hADCint[r][c]->Fit( fgaus,"+RQ" );
 	fgaus->GetParameters(Pars);
 	for ( int i=0; i<3; i++ ) ParErrs[i] = fgaus->GetParError(i); 
 
@@ -303,27 +308,28 @@ void bbsh_cos_cal ( int run = 366, int event = -1 ){
 	HVcorrection = pow( (TargetADC/Pars[1]), 0.10); // Correction term for HV
 	NinPeakSH = hADCint[r][c]->Integral( hADCint[r][c]->FindFixBin(lowerBinC),hADCint[r][c]->FindFixBin(upperBinC),"" ); // # of good events
 	  
-	// hADCint[r][c]->SetTitle(TString::Format("SH %d.%d | ADC Integral ",r+1,c+1));
-	// hADCint[r][c]->GetYaxis()->SetLabelSize(0.06);
-	// hADCint[r][c]->SetLineColor(kBlue+1);
-	// hADCint[r][c]->Draw();
-	// gPad->Update();
-
-	fgaus2->SetLineColor(2);
-	fgaus2->SetNpx(1000);
-	fgaus2->SetParameters( maxCount,maxBinCenter,stdDev );
-	fgaus2->SetRange( hamptointratio_min, hamptointratio_max );
-	hamptointratio[r][c]->Fit(fgaus2,"+RQ");
-
-	abc << r*kNcols+c << "\t" << fgaus2->GetParameter(1) << endl;
-
-	hamptointratio[r][c]->SetTitle(TString::Format("SH %d.%d | Amp/Int  ",r+1,c+1));
-	// hamptointratio[r][c]->GetYaxis()->SetLabelSize(0.06);
-        hamptointratio[r][c]->GetXaxis()->SetLabelSize(0.04);
-	hamptointratio[r][c]->GetYaxis()->SetLabelSize(0.04);
-	hamptointratio[r][c]->SetLineColor(kBlue+1);
-	hamptointratio[r][c]->Draw();
+	hADCint[r][c]->SetTitle(TString::Format("SH %d.%d | ADC Amp ",r+1,c+1));
+	hADCint[r][c]->GetYaxis()->SetLabelSize(0.06);
+	hADCint[r][c]->SetLineColor(kBlue+1);
+	hADCint[r][c]->Draw();
 	gPad->Update();
+
+
+	// fgaus2->SetLineColor(2);
+	// fgaus2->SetNpx(1000);
+	// fgaus2->SetParameters( maxCount,maxBinCenter,stdDev );
+	// fgaus2->SetRange( hamptointratio_min, hamptointratio_max );
+	// hamptointratio[r][c]->Fit(fgaus2,"+RQ");
+
+	// abc << r*kNcols+c << "\t" << fgaus->GetParameter(1) << endl;
+
+	// hamptointratio[r][c]->SetTitle(TString::Format("SH %d.%d | Amp/Int  ",r+1,c+1));
+	// // hamptointratio[r][c]->GetYaxis()->SetLabelSize(0.06);
+        // hamptointratio[r][c]->GetXaxis()->SetLabelSize(0.04);
+	// hamptointratio[r][c]->GetYaxis()->SetLabelSize(0.04);
+	// hamptointratio[r][c]->SetLineColor(kBlue+1);
+	// hamptointratio[r][c]->Draw();
+	// gPad->Update();
 
 	// Let's determine how good is the fit
 	if( hADCint[r][c]->GetEntries() < 20 ){
@@ -398,16 +404,22 @@ void bbsh_cos_cal ( int run = 366, int event = -1 ){
     outfile_data << endl;
   }
 
-  subCanv[0]->SaveAs(Form("plots/SH_cospeak_%d.pdf[",run));
-  for( int canC=0; canC<4; canC++ ) subCanv[canC]->SaveAs(Form("plots/SH_cospeak_%d.pdf",run));
-  subCanv[3]->SaveAs(Form("plots/SH_cospeak_%d.pdf]",run));
+  if(trigAmp){
+    subCanv[0]->SaveAs(Form("plots/SH_cospeak_Trigger_%d.pdf[",run));
+    for( int canC=0; canC<4; canC++ ) subCanv[canC]->SaveAs(Form("plots/SH_cospeak_Trigger_%d.pdf",run));
+    subCanv[3]->SaveAs(Form("plots/SH_cospeak_Trigger_%d.pdf]",run));
+  }else{
+    subCanv[0]->SaveAs(Form("plots/SH_cospeak_%d.pdf[",run));
+    for( int canC=0; canC<4; canC++ ) subCanv[canC]->SaveAs(Form("plots/SH_cospeak_%d.pdf",run));
+    subCanv[3]->SaveAs(Form("plots/SH_cospeak_%d.pdf]",run));
+  }
 
   cout << "The fit parameters have been written to bbshower_" << run << "_FitResults.txt" << "." << endl;
 
   // Making diagnostic plots
   if( diagPlots ){
     cout << "Creating diagnostic plots.." << endl;
-    makeSummaryPlots( run, date );
+    makeSummaryPlots( run, date, trigAmp );
   }
 
   // Close all the outFiles
@@ -456,7 +468,7 @@ TH1F* MakeHisto(Int_t row, Int_t col, Int_t bins, const char* suf="", Double_t m
 }
 
 // Process events
-void processEvent( int entry = -1 ){
+void processEvent( int entry = -1, bool trigAmp = 0 ){
   // Check event increment and increment
   if(entry == -1) {
     gCurrentEntry++;
@@ -511,26 +523,44 @@ void processEvent( int entry = -1 ){
     goodHistoTest( tdc[r][c],r,c ); // Setting flag for good events
   }
 
+
+  if(trigAmp){
+    trigTofadcRatio.clear();
+    GetTrigtoFADCratio();
+  } 
   
   // Implementation of the Tireman ( or, Bogdan? ) cut: The vertical neighbors will have to pass the cut 
   // (defined in "goodHistoTest routine") and at the same time the horizontal neighbors are not allowed
   // to pass the cut.
   for(r = 0; r < kNrows; r++) {
     for(c = 0; c < kNcols; c++) {
+      Int_t m = r*kNcols+c;
       hADCint[r][c]->SetTitle(Form("%d-%d ",r,c));
       if(r==0){
       	if((gPulse[r+2][c+1]&&gPulse[r+3][c+1]&&gPulse[r+4][c+1]) && (!gPulse[r+1][c]&&!gPulse[r+1][c+2])){
-      	  hADCint[r][c]->Fill( adc[r][c] );
+	  if(trigAmp) {
+	    hADCint[r][c]->Fill( trigTofadcRatio.at(m)*adc_amp[r][c] ); 
+	  }else{
+	    hADCint[r][c]->Fill( adc_amp[r][c] );
+	  }
 	  hamptointratio[r][c]->Fill( adc_amp[r][c]/adc[r][c] ); 
       	}
       }else if(r==(kNrows-1)){
       	if((gPulse[r][c+1]&&gPulse[r-1][c+1]&&gPulse[r-2][c+1]) && (!gPulse[r+1][c]&&!gPulse[r+1][c+2])){
-      	  hADCint[r][c]->Fill( adc[r][c] );
+	  if(trigAmp) {
+	    hADCint[r][c]->Fill( trigTofadcRatio.at(m)*adc_amp[r][c] ); 
+	  }else{
+	    hADCint[r][c]->Fill( adc_amp[r][c] );
+	  }
 	  hamptointratio[r][c]->Fill( adc_amp[r][c]/adc[r][c] );  
       	}
       }else{	
       	if( (gPulse[r][c+1]&&gPulse[r+2][c+1]) && (!gPulse[r+1][c]&&!gPulse[r+1][c+2]) ){
-      	  hADCint[r][c]->Fill( adc[r][c] );  
+	  if(trigAmp) {
+	    hADCint[r][c]->Fill( trigTofadcRatio.at(m)*adc_amp[r][c] ); 
+	  }else{
+	    hADCint[r][c]->Fill( adc_amp[r][c] );
+	  }
 	  hamptointratio[r][c]->Fill( adc_amp[r][c]/adc[r][c] );
       	}
       }
@@ -551,7 +581,7 @@ void goodHistoTest( double tdcVal, int row, int col ){
 } //goodHistoTest
 
 // Create diagnostic plots
-void makeSummaryPlots( int run, string date ){
+void makeSummaryPlots( int run, string date, bool trigAmp = 0 ){
     char CName[9], CTitle[100];
     TCanvas *CGr[4];
     TGraph *Gr[4];
@@ -588,14 +618,14 @@ void makeSummaryPlots( int run, string date ){
       if(i == 0 ){
     	Gr[i]->SetTitle(Form("Run# %d | Peak Position vs. Block No. for SH Blocks | %s",run,date.c_str()) );
     	Gr[i]->GetXaxis()->SetTitle("Block Number");
-    	Gr[i]->GetYaxis()->SetTitle("Peak Position (RAU)");
-    	Gr[i]->GetYaxis()->SetRangeUser(0.,10.);
+    	Gr[i]->GetYaxis()->SetTitle("Peak Position (mV)");
+    	Gr[i]->GetYaxis()->SetRangeUser(0.,30.);
       } else if (i == 1){
     	Gr[i]->SetTitle( Form("Run# %d | Peak RMS vs. Block No. for SH Blocks | %s",run,date.c_str()) ); 
     	Gr[i]->GetXaxis()->SetTitle("Block Number");
-    	Gr[i]->GetYaxis()->SetTitle("Peak RMS (RAU)");
+    	Gr[i]->GetYaxis()->SetTitle("Peak RMS (mV)");
     	Gr[i]->GetYaxis()->SetTitleOffset(1.4);
-    	Gr[i]->GetYaxis()->SetRangeUser(0.,2.);
+    	Gr[i]->GetYaxis()->SetRangeUser(0.,7.);
       }else if (i == 2){
     	Gr[i]->SetTitle( Form("Run# %d | N of Events in Peak(fitted region) vs Block No. for SH | %s",run,date.c_str()) );
     	Gr[i]->GetXaxis()->SetTitle("Block Number");
@@ -612,9 +642,40 @@ void makeSummaryPlots( int run, string date ){
       // CGr[i]->Write();
     }  
 
-    CGr[0]->SaveAs( Form("plots/BBSH_Cosmic_Cal_%d.pdf[",run) );
-    for( int i=0; i<4; i++ ) CGr[i]->SaveAs( Form("plots/BBSH_Cosmic_Cal_%d.pdf",run) );
-    CGr[3]->SaveAs( Form("plots/BBSH_Cosmic_Cal_%d.pdf]",run) );
+    if(trigAmp){
+      CGr[0]->SaveAs( Form("plots/BBSH_CosCal_Trigger_%d.pdf[",run) );
+      for( int i=0; i<4; i++ ) CGr[i]->SaveAs( Form("plots/BBSH_CosCal_Trigger_%d.pdf",run) );
+      CGr[3]->SaveAs( Form("plots/BBSH_CosCal_Trigger_%d.pdf]",run) );
+    }else{
+      CGr[0]->SaveAs( Form("plots/BBSH_Cosmic_Cal_%d.pdf[",run) );
+      for( int i=0; i<4; i++ ) CGr[i]->SaveAs( Form("plots/BBSH_Cosmic_Cal_%d.pdf",run) );
+      CGr[3]->SaveAs( Form("plots/BBSH_Cosmic_Cal_%d.pdf]",run) );
+    }
 }
 
 
+void GetTrigtoFADCratio(){
+  string InFile = "trigtoFADCcoef_SH.txt";
+  ifstream infile_data;
+  infile_data.open(InFile);
+  TString currentline;
+  if (infile_data.is_open() ) {
+    // cout << " Reading trigger to FADC ratios from " << InFile << endl;
+    TString temp;
+    while( currentline.ReadLine( infile_data ) ){
+      TObjArray *tokens = currentline.Tokenize("\t");
+      int ntokens = tokens->GetEntries();
+      if( ntokens > 1 ){
+	// temp = ( (TObjString*) (*tokens)[0] )->GetString();
+	// elemID.push_back( temp.Atof() );
+	temp = ( (TObjString*) (*tokens)[1] )->GetString();
+	double theRatio = temp.Atof();
+	trigTofadcRatio.push_back( theRatio );
+      }
+      delete tokens;
+    }
+    infile_data.close();
+  } else {
+    cerr << " No file : " << InFile << endl;
+  }
+}
