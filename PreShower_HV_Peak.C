@@ -26,8 +26,8 @@
 using namespace std;
 
 
-  static const Int_t shNCol=2;
-  static const Int_t shNRow=26;
+  static const Int_t psNCol=2;
+  static const Int_t psNRow=26;
 
 Double_t Peak_Desired = 300.; // 
 
@@ -44,6 +44,7 @@ void WriteHV();
 void AddRun(Int_t nrun);
 void FitRuns(Double_t Set_Peak);
 Double_t fitfunct(Double_t *x,Double_t *par);
+void GenDesiredFADCamps(Double_t desTrigamp);
 
 vector <Int_t> RunList;
 vector<vector<double> > HVList;
@@ -51,13 +52,13 @@ vector<vector<double> > PeakList;
 vector<vector<double> > PeakErrList;
 vector<vector<TH1F*> > HistList;
 
-Double_t fit_alpha[shNCol*shNRow];
-Double_t fit_alpha_err[shNCol*shNRow];
-Double_t fit_const[shNCol*shNRow];
-Double_t HVUpdate[shNCol*shNRow];
-Double_t HV_Crate[shNCol*shNRow];
-Double_t HV_Slot[shNCol*shNRow];
-Double_t HV_Chan[shNCol*shNRow];
+Double_t fit_alpha[psNCol*psNRow];
+Double_t fit_alpha_err[psNCol*psNRow];
+Double_t fit_const[psNCol*psNRow];
+Double_t HVUpdate[psNCol*psNRow];
+Double_t HV_Crate[psNCol*psNRow];
+Double_t HV_Slot[psNCol*psNRow];
+Double_t HV_Chan[psNCol*psNRow];
 //
 
 Double_t fitfunct(Double_t *x,Double_t *par) {
@@ -72,39 +73,48 @@ void WriteHV() {
   cout << " Write update HV to : " << OutFile << endl;
   outfile_hv.open(OutFile);
   TString CrateName[2] = {"rpi17:2001","rpi18:2001"};
-   for (Int_t nc=0;nc<2;nc++) {
+  for (Int_t nc=0;nc<2;nc++) {
     for (Int_t ns=0;ns<16;ns++) {
       outfile_hv << CrateName[nc] << " S" << ns << " " << "DV" ;
-    for (Int_t nch=0;nch<12;nch++) {
-      if (HV_Block[nc][ns][nch] == -1 ) {
-             outfile_hv << " " <<  HV_Value[nc][ns][nch] ;
-      } else {
-	Int_t blk=HV_Block[nc][ns][nch];
-        outfile_hv << " " <<  HVUpdate[blk] ;
+      for (Int_t nch=0;nch<12;nch++) {
+	if (HV_Block[nc][ns][nch] == -1 ) {
+	  outfile_hv << " " <<  HV_Value[nc][ns][nch] ;
+	} else {
+	  Int_t blk=HV_Block[nc][ns][nch];
+	  outfile_hv << " " <<  HVUpdate[blk] ;
+	}
       }
+      outfile_hv << endl;
     }
-    outfile_hv << endl;
-    }}
+  }
   outfile_hv.close();     
 }
 //
 
 void FitRuns(Double_t Set_Peak=200.) {
-  if (Set_Peak >0 && Set_Peak < 500) Peak_Desired=Set_Peak;
-  Int_t MC_index[shNCol] = {1,2};
-  Int_t MS_index[shNCol] = {21,22};
+  bool trigtoFADC_ratio = false;
+  if ( Set_Peak==-1 ){
+    Double_t desTrigamp = 0.;
+    cout << " Enter desired trigger amplitude (mV) " << endl;
+    cin >> desTrigamp;
+    GenDesiredFADCamps(desTrigamp);
+    trigtoFADC_ratio = true;
+  }else if (Set_Peak >0 && Set_Peak < 500) Peak_Desired=Set_Peak;
+
+  Int_t MC_index[psNCol] = {1,2};
+  Int_t MS_index[psNCol] = {21,22};
   TH2F* alpha_xy = new TH2F("alpha_xy"," alpha ; Ncol ; NRow",2,1,3,27,1,28);
   TH2F* hv_xy = new TH2F("hv_xy",Form(" HV (peak at %5.1f)  ; Ncol ; NRow",Peak_Desired),2,1,3,27,1,28);
-     TF1 *f1[shNCol*shNRow];
-    for (Int_t nr=0;nr<shNRow;nr++) {
+     TF1 *f1[psNCol*psNRow];
+    for (Int_t nr=0;nr<psNRow;nr++) {
          TCanvas *canHV ;
          TMultiGraph *mg1 = new TMultiGraph();
          TMultiGraph *mgfit = new TMultiGraph();
 	 TLegend *leg;
-	 TGraph *grHVPeakFit[shNCol];
-	 TGraphErrors *grHVPeak[shNCol];
-	 TGraphErrors *grHVPeakLog[shNCol];
-	 TLine *fitline[shNCol];
+	 TGraph *grHVPeakFit[psNCol];
+	 TGraphErrors *grHVPeak[psNCol];
+	 TGraphErrors *grHVPeakLog[psNCol];
+	 TLine *fitline[psNCol];
 	 cout << " Row : " << nr+1 << endl;
 	 canHV = new TCanvas(Form("row_%d",nr+1),Form("row_%d",nr+1),700,700);
 	 leg = new TLegend(.1,.75,.4,.95);
@@ -112,10 +122,10 @@ void FitRuns(Double_t Set_Peak=200.) {
 	 Double_t MaxPeak=0;
 	 Double_t MinHV=10000;
 	 Double_t MinPeak=10000;
-         for (Int_t nc=0;nc<shNCol;nc++) {
+         for (Int_t nc=0;nc<psNCol;nc++) {
 	 Double_t MaxHVBlk=0;
 	 Double_t MinHVBlk=10000;
-	 Int_t nelem=nr+nc*shNRow;
+	 Int_t nelem=nr+nc*psNRow;
 	   f1[nelem] = new TF1(Form("f1_%d_%d",nr,nc),fitfunct,0,2000,2);
 	   vector<double> vecHV;
 	   vector<double> vecHVErr;
@@ -148,10 +158,21 @@ void FitRuns(Double_t Set_Peak=200.) {
 	   grHVPeak[nc]->SetMarkerColor(MC_index[nc]);
 	   grHVPeak[nc]->SetMarkerStyle(MS_index[nc]);
 	   mg1->Add(grHVPeak[nc],"P");
-	   HVUpdate[nelem]=-TMath::Exp((TMath::Log(Peak_Desired) - fit_const[nelem])/fit_alpha[nelem]);
+	   if(!trigtoFADC_ratio){
+	     HVUpdate[nelem]=-TMath::Exp((TMath::Log(Peak_Desired) - fit_const[nelem])/fit_alpha[nelem]);
+	   }else{
+	     Double_t temp = DesiredFADCamps.at(nr*shNCol+nc);
+	     HVUpdate[nelem]=-TMath::Exp((TMath::Log(temp) - fit_const[nelem])/fit_alpha[nelem]);
+	   }
 	   if (fit_alpha[nelem]<1) {
-	     Double_t HV_temp=vecHV[0]*TMath::Power(Peak_Desired/vecPeak[0],1./6.);
-                HVUpdate[nelem]=-HV_temp;
+	     if(!trigtoFADC_ratio){
+	       Double_t HV_temp=vecHV[0]*TMath::Power(Peak_Desired/vecPeak[0],1./6.);
+	       HVUpdate[nelem]=-HV_temp;
+	     }else{
+	       Double_t temp = DesiredFADCamps.at(nr*shNCol+nc);
+	       Double_t HV_temp=vecHV[0]*TMath::Power(temp/vecPeak[0],1./6.);
+	       HVUpdate[nelem]=-HV_temp;
+	     }
 	   }
 	   hv_xy->Fill(float(nc+1),float(nr+1),HVUpdate[nelem]);
 	   leg->AddEntry(grHVPeak[nc],Form(" Col %d alpha = %5.2f HV= %6.1f",nc,fit_alpha[nelem],HVUpdate[nelem] ));
@@ -180,7 +201,7 @@ void FitRuns(Double_t Set_Peak=200.) {
 	 mg1->GetXaxis()->SetTitle("HV ");
 	 mg1->GetYaxis()->SetTitle("Peak ");
 	 mg1->Draw("APL");
-         for (Int_t nc=0;nc<shNCol;nc++) {	 
+         for (Int_t nc=0;nc<psNCol;nc++) {	 
 	   //	  fitline[nc]->Draw("same");
 	 }
 	 leg->Draw();
@@ -228,10 +249,10 @@ gStyle->SetPalette(1,0);
   cout << " Write alphas to : " << OutFile;
    ofstream outfile_data;
   outfile_data.open(OutFile);
-    for (Int_t nr=0;nr<shNRow;nr++) {
+    for (Int_t nr=0;nr<psNRow;nr++) {
        outfile_data << " Row " << nr+1 << " : ";
-        for (Int_t nc=0;nc<shNCol;nc++) {
-	  outfile_data << " " << fit_alpha[nr*shNCol+nc] << " +/- " << fit_alpha_err[nr*shNCol+nc] ;
+        for (Int_t nc=0;nc<psNCol;nc++) {
+	  outfile_data << " " << fit_alpha[nr*psNCol+nc] << " +/- " << fit_alpha_err[nr*psNCol+nc] ;
 	}
 	outfile_data << endl;
     }
@@ -242,16 +263,16 @@ void AddRun(Int_t nrun) {
   if (RunList.size()==0) SetHVMap();
   RunList.push_back(nrun);
     ReadHV(nrun);	
-  double tempHV[shNCol*shNRow];
+  double tempHV[psNCol*psNRow];
     for (Int_t nc=0;nc<2;nc++) {
     for (Int_t ns=0;ns<16;ns++) {
     for (Int_t nch=0;nch<12;nch++) {
        if (HV_Block[nc][ns][nch]!= -1) tempHV[HV_Block[nc][ns][nch]]=HV_Value[nc][ns][nch];
     }}}
     vector<double > vecHV;
-    for (Int_t nc=0;nc<shNCol;nc++) {
-    for (Int_t nr=0;nr<shNRow;nr++) {
-	 Int_t nelem=nr+nc*shNRow;
+    for (Int_t nc=0;nc<psNCol;nc++) {
+    for (Int_t nr=0;nr<psNRow;nr++) {
+	 Int_t nelem=nr+nc*psNRow;
 	 //	 cout << " nelem nr nc HV = " << nelem << " " << nr << " " << nc << " " << tempHV[nelem] << endl;
        vecHV.push_back(tempHV[nelem]);
      }}
@@ -263,14 +284,14 @@ void AddRun(Int_t nrun) {
 
 void CompHistRuns() {
   gStyle->SetOptStat(0);
-    for (Int_t nr=0;nr<shNRow;nr++) {
+    for (Int_t nr=0;nr<psNRow;nr++) {
          TCanvas *canHV ;
 	   canHV= new TCanvas(Form("can_%d",nr),Form("Row %d",nr),1200,900);    
 	   canHV->Divide(1,2);	  
-         for (Int_t nc=0;nc<shNCol;nc++) {
+         for (Int_t nc=0;nc<psNCol;nc++) {
 	   TLegend *leg = new TLegend(.5,.45,.9,.9);
            	   canHV->cd(nc+1);
-	 Int_t nelem=nr+nc*shNRow;
+	 Int_t nelem=nr+nc*psNRow;
 		   Double_t ymax=0;
 	   for  (UInt_t nru=0;nru<RunList.size();nru++) {
 	     Double_t rat=HistList[nru][nelem]->GetMaximum();
@@ -306,8 +327,8 @@ void ReadHist(Int_t nrun) {
   cout << " Read hist file " << inputroot << endl;
   fhistroot =  new TFile(inputroot);
   vector<TH1F*> h_shADC_pedsub_cut;
-    for (Int_t nc=0;nc<shNCol;nc++) {
-    for (Int_t nr=0;nr<shNRow;nr++) {
+    for (Int_t nc=0;nc<psNCol;nc++) {
+    for (Int_t nr=0;nr<psNRow;nr++) {
       TH1F* temphist ;
       if (nc==0) temphist=(TH1F*)fhistroot->Get(Form("h_psADC_pedsub_cut_L%d",nr+1)) ;
       if (nc==1) temphist=(TH1F*)fhistroot->Get(Form("h_psADC_pedsub_cut_R%d",nr+1)) ;
@@ -353,11 +374,11 @@ void ReadPeak(Int_t nrun) {
 
 
 void PrintRuns() {
-    for (Int_t nr=0;nr<shNRow;nr++) {
+    for (Int_t nr=0;nr<psNRow;nr++) {
          for (UInt_t nru=0;nru<RunList.size();nru++) {
 	   cout << RunList[nru] << " " << " Row : " << nr ;
-          for (Int_t nc=0;nc<shNCol;nc++) {
-	 Int_t nelem=nr+nc*shNRow;
+          for (Int_t nc=0;nc<psNCol;nc++) {
+	 Int_t nelem=nr+nc*psNRow;
 	    cout  << " Col : " << nc<< " " << nelem<< " " << HVList[nru][nelem] << " " << PeakList[nru][nelem];
           }
 	  cout << endl;
@@ -365,31 +386,67 @@ void PrintRuns() {
      }
 }
 
+// void SetHVMap() {
+//   cout << " Setting HV map " << endl;
+//     for (Int_t nc=0;nc<2;nc++) {
+//     for (Int_t ns=0;ns<16;ns++) {
+//     for (Int_t nch=0;nch<12;nch++) {
+//       HV_Block[nc][ns][nch]=-1;
+//     }}}
+  
+//   Int_t nslot=13;// HV slots = 0 to 15
+//   Int_t nchan=9;// HV channels = 0 to 11
+//   for (Int_t nc=0;nc<psNCol;nc++) {
+//       if (nc==1) nslot=0;
+//       if (nc==1) nchan=0;
+//     for (Int_t nr=0;nr<psNRow;nr++) {
+//       if (nc ==1) {
+// 	HV_Block[0][nslot][nchan++] = nr+psNRow; // Right row in RPI17
+//  	HV_Slot[nr+psNRow] =nslot ;
+//  	HV_Crate[nr+psNRow] =0 ;
+//  	HV_Chan[nr+psNRow] =nchan-1;
+//      } else {
+// 	HV_Block[1][nslot][nchan++] = nr; // Left Row in RPI18
+//   	HV_Slot[nr] =nslot ;
+//  	HV_Crate[nr] =1 ;
+//  	HV_Chan[nr] =nchan-1;
+//      }
+//       if (nchan==12) {
+//           nchan=0;
+//           nslot++;
+//       }
+//     }//nrow
+//   } // ncol
+// }
+//
+
 void SetHVMap() {
   cout << " Setting HV map " << endl;
-    for (Int_t nc=0;nc<2;nc++) {
+  for (Int_t nc=0;nc<2;nc++) {
     for (Int_t ns=0;ns<16;ns++) {
-    for (Int_t nch=0;nch<12;nch++) {
-      HV_Block[nc][ns][nch]=-1;
-    }}}
+      for (Int_t nch=0;nch<12;nch++) {
+	HV_Block[nc][ns][nch]=-1;
+      }
+    }
+  }
   
-  Int_t nslot=13;// HV slots = 0 to 15
-  Int_t nchan=9;// HV channels = 0 to 11
-  for (Int_t nc=0;nc<shNCol;nc++) {
-      if (nc==1) nslot=0;
-      if (nc==1) nchan=0;
-    for (Int_t nr=0;nr<shNRow;nr++) {
+  Int_t nslot=0;// HV slots = 0 to 15
+  Int_t nchan=0;// HV channels = 0 to 11
+  for (Int_t nc=0;nc<psNCol;nc++) {
+    if (nc==1) nslot=13;
+    if (nc==1) nchan=9;
+    for (Int_t nr=0;nr<psNRow;nr++) {
       if (nc ==1) {
-	HV_Block[0][nslot][nchan++] = nr+shNRow; // Right row in RPI17
- 	HV_Slot[nr+shNRow] =nslot ;
- 	HV_Crate[nr+shNRow] =0 ;
- 	HV_Chan[nr+shNRow] =nchan-1;
-     } else {
 	HV_Block[1][nslot][nchan++] = nr; // Left Row in RPI18
   	HV_Slot[nr] =nslot ;
  	HV_Crate[nr] =1 ;
  	HV_Chan[nr] =nchan-1;
-     }
+     } else {
+	HV_Block[0][nslot][nchan++] = nr+psNRow; // Right row in RPI17
+ 	HV_Slot[nr+psNRow] =nslot ;
+ 	HV_Crate[nr+psNRow] =0 ;
+ 	HV_Chan[nr+psNRow] =nchan-1;
+      }
       if (nchan==12) {
           nchan=0;
           nslot++;
@@ -398,6 +455,7 @@ void SetHVMap() {
   } // ncol
 }
 //
+
 void ReadHV(Int_t nrun) {
   TString HVfileName = Form("hv_set/run_%d_hv.set",nrun);
   cout << " read file = " << HVfileName << endl;
@@ -445,20 +503,47 @@ void UpdateHV(Int_t nrun, Double_t HVShift) {
   ofstream outfile_hv;
   outfile_hv.open(OutFile);
   TString CrateName[2] = {"rpi17:2001","rpi18:2001"};
-    for (Int_t nc=0;nc<2;nc++) {
+  for (Int_t nc=0;nc<2;nc++) {
     for (Int_t ns=0;ns<16;ns++) {
       outfile_hv << CrateName[nc] << " S" << ns << " " << "DV" ;
-    for (Int_t nch=0;nch<12;nch++) {
-      if (HV_Block[nc][ns][nch] == -1 ) {
-             outfile_hv << " " <<  HV_Value[nc][ns][nch] ;
-      } else {
-             outfile_hv << " " <<  HV_Value[nc][ns][nch]-HVShift ;
+      for (Int_t nch=0;nch<12;nch++) {
+	if (HV_Block[nc][ns][nch] == -1 ) {
+	  outfile_hv << " " <<  HV_Value[nc][ns][nch] ;
+	} else {
+	  outfile_hv << " " <<  HV_Value[nc][ns][nch]-HVShift ;
+	}
       }
+      outfile_hv << endl;
     }
-    outfile_hv << endl;
-    }}
+  }
   outfile_hv.close();     
 }
 
 
+void GenDesiredFADCamps(Double_t desTrigamp){
+  string InFile = "TrigtoFADC/trigtoFADCcoef_SH.txt";
+  ifstream infile_data;
+  infile_data.open(InFile);
+  TString currentline;
+  if (infile_data.is_open() ) {
+    cout << " Reading trigger to FADC ratios from " << InFile << endl;
+    cout << " Generating desired FADC amps to align trigger amps to " << desTrigamp << " mV. " << endl;
+    TString temp;
+    while( currentline.ReadLine( infile_data ) ){
+      TObjArray *tokens = currentline.Tokenize("\t");
+      int ntokens = tokens->GetEntries();
+      if( ntokens > 1 ){
+	// temp = ( (TObjString*) (*tokens)[0] )->GetString();
+	// elemID.push_back( temp.Atof() );
+	temp = ( (TObjString*) (*tokens)[1] )->GetString();
+	Double_t target_FADC_amp_pCh = desTrigamp/temp.Atof();
+	DesiredFADCamps.push_back( target_FADC_amp_pCh );
+      }
+      delete tokens;
+    }
+    infile_data.close();
+  } else {
+    cout << " No file : " << InFile << endl;
+  }
+}
 
