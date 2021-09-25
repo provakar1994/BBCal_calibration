@@ -76,14 +76,20 @@ void WriteHV() {
   cout << " Write update HV to : " << OutFile << endl;
   outfile_hv.open(OutFile);
   TString CrateName[2] = {"rpi17:2001","rpi18:2001"};
+  Int_t crt = -1;
   for (Int_t nc=0;nc<2;nc++) {
     for (Int_t ns=0;ns<16;ns++) {
       outfile_hv << CrateName[nc] << " S" << ns << " " << "DV" ;
       for (Int_t nch=0;nch<12;nch++) {
-	if (HV_Block[nc][ns][nch] == -1 ) {
+	if(nc==0){
+	  crt = 1;
+	}else{
+	  crt = 0;
+	}
+	if (HV_Block[crt][ns][nch] == -1 ) {
 	  outfile_hv << " " <<  HV_Value[nc][ns][nch] ;
 	} else {
-	  Int_t blk=HV_Block[nc][ns][nch];
+	  Int_t blk=HV_Block[crt][ns][nch];
 	  outfile_hv << " " <<  HVUpdate[blk] ;
 	}
       }
@@ -440,15 +446,15 @@ void SetHVMap() {
     if (nc==1) nchan=9;
     for (Int_t nr=0;nr<psNRow;nr++) {
       if (nc ==1) {
-	HV_Block[1][nslot][nchan++] = nr; // Left Row in RPI18
-  	HV_Slot[nr] =nslot ;
- 	HV_Crate[nr] =1 ;
- 	HV_Chan[nr] =nchan-1;
-     } else {
-	HV_Block[0][nslot][nchan++] = nr+psNRow; // Right row in RPI17
- 	HV_Slot[nr+psNRow] =nslot ;
- 	HV_Crate[nr+psNRow] =0 ;
+	HV_Block[1][nslot][nchan++] = nr+psNRow; // Left Row in RPI18
+  	HV_Slot[nr+psNRow] =nslot ;
+ 	HV_Crate[nr+psNRow] =1 ;
  	HV_Chan[nr+psNRow] =nchan-1;
+     } else {
+	HV_Block[0][nslot][nchan++] = nr; // Right row in RPI17
+ 	HV_Slot[nr] =nslot ;
+ 	HV_Crate[nr] =0 ;
+ 	HV_Chan[nr] =nchan-1;
       }
       if (nchan==12) {
           nchan=0;
