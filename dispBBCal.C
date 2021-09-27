@@ -6,12 +6,14 @@
 #include <TSystem.h>
 #include "bbcal.h"
 
-const Int_t kNrows = 28;
+const Int_t kPSNrows = 26;
+const Int_t kSHNrows = 27;
+
 const Int_t kPSNcols = 2;
 const Int_t kSHNcols = 7;
 
-const Int_t kNumModules_PS = kNrows*kPSNcols;
-const Int_t kNumModules_SH = kNrows*kSHNcols;
+const Int_t kNumModules_PS = kPSNrows*kPSNcols;
+const Int_t kNumModules_SH = kSHNrows*kSHNcols;
 
 const Int_t DISP_MIN_SAMPLE = 0;
 const Int_t DISP_MAX_SAMPLE = 50;
@@ -51,7 +53,13 @@ namespace hcalgui {
   TRootEmbeddedCanvas *canv[4];
 
   TGCompositeFrame* AddTabSub(Int_t sub) {
-    tf = fTab->AddTab(Form("BBCal fADC Sub%d",sub+1));
+    
+
+    if ( sub < 4 ) 
+      tf = fTab->AddTab(Form("BBCal SH fADC Sub%d",sub+1));
+
+    if ( sub > 3 )
+      tf = fTab->AddTab(Form("BBCal PS fADC Sub%d",sub+1));
 
     TGCompositeFrame *fF5 = new TGCompositeFrame(tf, (12+1)*kCanvSize,(6+1)*kCanvSize , kHorizontalFrame);
     TGLayoutHints *fL4 = new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX |
@@ -101,8 +109,8 @@ namespace hcalgui {
 
       for(Int_t i = 0; i < 4; i++) {
         subCanv[i] = canv[i]->GetCanvas();
-        
-	subCanv[i]->Divide(4,7,0.001,0.001);
+
+	subCanv[i]->Divide(7,7,0.001,0.001);
         
       }
       for(Int_t i = 4; i < 8; i++) {
@@ -118,10 +126,10 @@ namespace hcalgui {
 
 
 Double_t nhit = 0;
-TH1F *gPShistos[kNrows][kPSNcols];
-TH1F *gSHhistos[kNrows][kSHNcols];
-Bool_t gPSsaturated[kNrows][kPSNcols];
-Bool_t gSHsaturated[kNrows][kSHNcols];
+TH1F *gPShistos[kPSNrows][kPSNcols];
+TH1F *gSHhistos[kSHNrows][kSHNcols];
+Bool_t gPSsaturated[kPSNrows][kPSNcols];
+Bool_t gSHsaturated[kSHNrows][kSHNcols];
 
 TH1F* MakeHisto(Int_t row, Int_t col, Int_t bins)
 {
@@ -157,32 +165,36 @@ void displayEvent(Int_t entry = -1)
   
   Int_t r,c,idx,n,sub;
   // Clear old histograms, just in case modules are not in the tree
-  for(r = 0; r < kNrows; r++) {
+  for(r = 0; r < kPSNrows; r++) {
     for(c = 0; c < kPSNcols; c++) {
       gPShistos[r][c]->Reset("ICES M");
       gPSsaturated[r][c] = false;
     }
+  }
+  for(r = 0; r < kSHNrows; r++) {
     for(c = 0; c < kSHNcols; c++) {
       gSHhistos[r][c]->Reset("ICES M");
       gSHsaturated[r][c] = false;
     } 
   }  
 
-  Double_t PSpeak[kNrows][kPSNcols];
-  Double_t PSadc[kNrows][kSHNcols];
-  //Double_t PStdc[kNrows][kSHNcols];
+  Double_t PSpeak[kPSNrows][kPSNcols];
+  Double_t PSadc[kPSNrows][kPSNcols];
+  //Double_t PStdc[kPSNrows][kSHNcols];
 
-  Double_t SHpeak[kNrows][kPSNcols];
-  Double_t SHadc[kNrows][kSHNcols];
-  //Double_t SHtdc[kNrows][kSHNcols];
+  Double_t SHpeak[kSHNrows][kSHNcols];
+  Double_t SHadc[kSHNrows][kSHNcols];
+  //Double_t SHtdc[kSHNrows][kSHNcols];
   
-  for(r = 0; r < kNrows; r++) {
+  for(r = 0; r < kSHNrows; r++) {
     for(c  = 0; c < kSHNcols; c++) {
       SHpeak[r][c] = 0.0;
       SHadc[r][c] = 0.0;
       //SHtdc[r][c] = 0.0;
 
     }
+  }
+  for(r = 0; r < kPSNrows; r++) {
     for(c  = 0; c < kPSNcols; c++) {
       PSpeak[r][c] = 0.0;
       PSadc[r][c] = 0.0;
@@ -227,7 +239,7 @@ void displayEvent(Int_t entry = -1)
       }
     }
   }
-  for(r = 0; r < kNrows; r++) {
+  for(r = 0; r < kSHNrows; r++) {
     for(c = 0; c < kSHNcols; c++) {
       sub = r/7;
       subCanv[sub]->cd( (r%7)*kSHNcols + c + 1 );
@@ -278,7 +290,7 @@ void displayEvent(Int_t entry = -1)
       }
     }
   }
-  for(r = 0; r < kNrows; r++) {
+  for(r = 0; r < kPSNrows; r++) {
     for(c = 0; c < kPSNcols; c++) {
       sub = r/7 + 4;
       subCanv[sub]->cd( (r%7)*kPSNcols + c + 1 );
@@ -412,11 +424,13 @@ Int_t dispBBCal(Int_t run = 1198, Int_t event = -1)
     
     
     std::cerr << "Opened up tree with nentries=" << T->GetEntries() << std::endl;
-    for(Int_t r = 0; r < kNrows; r++) {
+    for(Int_t r = 0; r < kPSNrows; r++) {
       for(Int_t c = 0; c < kPSNcols; c++) {
 	gPShistos[r][c] = MakeHisto(r,c,DISP_FADC_SAMPLES);
 	gPSsaturated[r][c] = false;
       }
+    }
+    for(Int_t r = 0; r < kSHNrows; r++) {
       for(Int_t c = 0; c < kSHNcols; c++) {
 	gSHhistos[r][c] = MakeHisto(r,c,DISP_FADC_SAMPLES);
 	gSHsaturated[r][c] = false;
