@@ -184,9 +184,9 @@ void FitRuns(Double_t Set_Peak=200.) {
       }
       if(nr==1&&nc==1){
 	for (UInt_t nru=0;nru<RunList.size();nru++) {
-	  Double_t peakFit = -TMath::Exp((TMath::Log(-vecHV.at(nru)) + fit_const[nr*shNCol+nc])/fit_alpha[nr*shNCol+nc]);
-	  Double_t ratio = peakFit/vecPeak.at(nru);	  
-	  hlinRes->Fill( -vecHV.at(nru),ratio );
+	  Double_t peakFit = -TMath::Exp((TMath::Log(abs(HVList[nru][nr*shNCol+nc])) + fit_const[nr*shNCol+nc])/fit_alpha[nr*shNCol+nc]);
+	  Double_t ratio = peakFit/PeakList[nru][nr*shNCol+nc];	  
+	  hlinRes->Fill( abs(HVList[nru][nr*shNCol+nc]),ratio );
 	}
       } 
       if (abs(HVUpdate[nr*shNCol+nc]) > 2000) HVUpdate[nr*shNCol+nc]=-2000.;
