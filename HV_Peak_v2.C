@@ -121,7 +121,7 @@ void FitRuns(Double_t Set_Peak=200.) {
     TLine *fitline[shNCol];
     cout << " Row : " << nr+1 << endl;
     canHV = new TCanvas(Form("row_%d",nr+1),Form("row_%d",nr+1),700,700);
-    leg = new TLegend(.1,.75,.55,.95);
+    leg = new TLegend(.1,.75,.6,.95);
     Double_t MaxHV=0;
     Double_t MaxPeak=0;
     Double_t MinHV=10000;
@@ -180,7 +180,7 @@ void FitRuns(Double_t Set_Peak=200.) {
 	}
       }
       if (abs(HVUpdate[nr*shNCol+nc]) > 2000) HVUpdate[nr*shNCol+nc]=-2000.;
-      leg->AddEntry(grHVPeak[nc],Form(" Col %d alpha = %5.2f HV= %6.1f #chi^{2}= %.2f",nc+1,fit_alpha[nr*shNCol+nc],fit_chi2[nr*shNCol+nc],HVUpdate[nr*shNCol+nc] ));
+      leg->AddEntry(grHVPeak[nc],Form(" Col %d alpha = %5.2f HV= %6.1f #chi^{2}= %5.2f",nc+1,fit_alpha[nr*shNCol+nc],HVUpdate[nr*shNCol+nc],fit_chi2[nr*shNCol+nc] ));
       cout << " " <<fit_alpha[nr*shNCol+nc] << " " <<fit_const[nr*shNCol+nc] << " " <<HVUpdate[nr*shNCol+nc]  << endl;
       Double_t fit_lo = TMath::Exp(fit_const[nr*shNCol+nc] + fit_alpha[nr*shNCol+nc]*TMath::Log(MinHVBlk));
       Double_t fit_hi = TMath::Exp(fit_const[nr*shNCol+nc] + fit_alpha[nr*shNCol+nc]*TMath::Log(MaxHVBlk));
