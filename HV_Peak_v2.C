@@ -18,6 +18,7 @@
 #include <TProfile.h>
 #include <TObjArray.h>
 #include <TObjString.h>
+#include <TLatex.h>
 #include <iostream>
 #include <sstream>
 #include <fstream>
@@ -57,6 +58,7 @@ vector<vector<TH1F*> > HistList;
 
 Double_t fit_alpha[shNCol*shNRow];
 Double_t fit_alpha_err[shNCol*shNRow];
+Double_t fit_chi2[shNCol*shNRow];
 Double_t fit_const[shNCol*shNRow];
 Double_t HVUpdate[shNCol*shNRow];
 Double_t HV_Crate[shNCol*shNRow];
@@ -119,7 +121,7 @@ void FitRuns(Double_t Set_Peak=200.) {
     TLine *fitline[shNCol];
     cout << " Row : " << nr+1 << endl;
     canHV = new TCanvas(Form("row_%d",nr+1),Form("row_%d",nr+1),700,700);
-    leg = new TLegend(.1,.75,.4,.95);
+    leg = new TLegend(.1,.75,.55,.95);
     Double_t MaxHV=0;
     Double_t MaxPeak=0;
     Double_t MinHV=10000;
@@ -152,6 +154,7 @@ void FitRuns(Double_t Set_Peak=200.) {
       grHVPeak[nc] = new TGraphErrors(vecHV.size(),&vecHV[0],&vecPeak[0],&vecHVErr[0],&vecPeakErr[0]);
       grHVPeakLog[nc] = new TGraphErrors(vecHV.size(),&vecHV[0],&vecPeakLog[0],&vecHVErr[0],&vecPeakErrLog[0]);
       grHVPeakLog[nc]->Fit(Form("f1_%d_%d",nr,nc),"Q");
+      fit_chi2[nr*shNCol+nc]=f1[nr*shNCol+nc]->GetChisquare();
       fit_alpha[nr*shNCol+nc]=f1[nr*shNCol+nc]->GetParameter(1);
       alpha_xy->Fill(float(nc+1),float(nr+1),fit_alpha[nr*shNCol+nc]);
       fit_alpha_err[nr*shNCol+nc]=f1[nr*shNCol+nc]->GetParError(1);
@@ -177,7 +180,7 @@ void FitRuns(Double_t Set_Peak=200.) {
 	}
       }
       if (abs(HVUpdate[nr*shNCol+nc]) > 2000) HVUpdate[nr*shNCol+nc]=-2000.;
-      leg->AddEntry(grHVPeak[nc],Form(" Col %d alpha = %5.2f HV= %6.1f",nc+1,fit_alpha[nr*shNCol+nc],HVUpdate[nr*shNCol+nc] ));
+      leg->AddEntry(grHVPeak[nc],Form(" Col %d alpha = %5.2f HV= %6.1f #chi^{2}= %.2f",nc+1,fit_alpha[nr*shNCol+nc],fit_chi2[nr*shNCol+nc],HVUpdate[nr*shNCol+nc] ));
       cout << " " <<fit_alpha[nr*shNCol+nc] << " " <<fit_const[nr*shNCol+nc] << " " <<HVUpdate[nr*shNCol+nc]  << endl;
       Double_t fit_lo = TMath::Exp(fit_const[nr*shNCol+nc] + fit_alpha[nr*shNCol+nc]*TMath::Log(MinHVBlk));
       Double_t fit_hi = TMath::Exp(fit_const[nr*shNCol+nc] + fit_alpha[nr*shNCol+nc]*TMath::Log(MaxHVBlk));
