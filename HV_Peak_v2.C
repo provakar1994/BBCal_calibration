@@ -109,6 +109,9 @@ void FitRuns(Double_t Set_Peak=200.) {
   Int_t MS_index[shNCol] = {21,22,23,24,25,26,27};
   TH2F* alpha_xy = new TH2F("alpha_xy"," alpha ; Ncol ; NRow",7,1,8,27,1,28);
   TString outpdffile=Form("plots/hv_fit_%d_%d.pdf",RunList[0],RunList[RunList.size()-1]);
+  
+  TH1F* hlinRes = new TH1F("hlinRes"," ; HV (V) ; Peak Ratio ",(int)RunList.size(),0,RunList.size());
+  
   TF1 *f1[shNCol*shNRow];
   for (Int_t nr=0;nr<shNRow;nr++) {
     TCanvas *canHV ;
@@ -179,6 +182,13 @@ void FitRuns(Double_t Set_Peak=200.) {
 	  HVUpdate[nr*shNCol+nc]=-HV_temp;
 	}
       }
+      if(nr==1&&nc==1){
+	for (UInt_t nru=0;nru<RunList.size();nru++) {
+	  Double_t peakFit = -TMath::Exp((TMath::Log(-vecHV.at(nru)) + fit_const[nr*shNCol+nc])/fit_alpha[nr*shNCol+nc]);
+	  Double_t ratio = peakFit/vecPeak.at(nru);	  
+	  hlinRes->Fill( -vecHV.at(nru),ratio );
+	}
+      } 
       if (abs(HVUpdate[nr*shNCol+nc]) > 2000) HVUpdate[nr*shNCol+nc]=-2000.;
       leg->AddEntry(grHVPeak[nc],Form(" Col %d alpha = %5.2f HV= %6.1f #chi^{2}= %5.2f",nc+1,fit_alpha[nr*shNCol+nc],HVUpdate[nr*shNCol+nc],fit_chi2[nr*shNCol+nc] ));
       cout << " " <<fit_alpha[nr*shNCol+nc] << " " <<fit_const[nr*shNCol+nc] << " " <<HVUpdate[nr*shNCol+nc]  << endl;
@@ -257,9 +267,15 @@ void FitRuns(Double_t Set_Peak=200.) {
     for (Int_t nc=0;nc<shNCol;nc++) {
       outfile_data << " Row = " << nr+1 << " Col = " << nc+1<< " " << fit_alpha[nr*shNCol+nc] << " +/- " << fit_alpha_err[nr*shNCol+nc]  << " New HV = " <<  HVUpdate[nr*shNCol+nc]<< endl;
     }
-    ;
   }
   outfile_data.close();
+
+  string OutFile1 = Form("Output/run_%d_%d_ratio.root",RunList[0],RunList[RunList.size()-1]);
+  cout << " Write alphas to : " << OutFile1 << endl;
+  ofstream outfile_data1;
+  outfile_data1.open(OutFile1);
+  hlinRes->Write();
+  outfile_data1.close();  
 }
 //
 void AddRun(Int_t nrun) {
