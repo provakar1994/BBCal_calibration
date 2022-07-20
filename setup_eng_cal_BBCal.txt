@@ -1,0 +1,9 @@
+#$OUT_DIR/gmn_replayed_11182_stream0_seg12_14_163.root
+#$OUT_DIR/bbshower_11199_50000.root
+$OUT_DIR/mkj_bbshower_11199_500000.root
+endlist
+bb.sh.nclus>0&&bb.ps.nclus>0
+endcut
+E_beam 1.92
+Min_Event_Per_Channel 20
+Min_MB_Ratio 0.1
